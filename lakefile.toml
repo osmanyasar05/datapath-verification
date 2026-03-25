@@ -1,6 +1,6 @@
 name = "DatapathVerification"
 version = "0.1.0"
-defaultTargets = ["datapathverification"]
+defaultTargets = ["DatapathVerification"]
 
 [[lean_lib]]
 name = "DatapathVerification"
