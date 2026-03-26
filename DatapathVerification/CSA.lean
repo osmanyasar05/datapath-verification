@@ -3,6 +3,8 @@ import DatapathVerification.ForLean
 
 /-!
   This file proves the correctness of a carry-save adder (CSA) in Lean 4.
+  Proof is based on: C. Berg, "Formal Verification of an IEEE Floating Point Adder", 2001.
+  https://www.df7cb.de/cs/publications/2001/fpadder-cb.pdf
 -/
 
 namespace CSA
@@ -23,7 +25,7 @@ def carrySave : (w : ℕ) → BitVec w → BitVec w → BitVec w → CSAResult w
     let cMsb := c[n]
     let x := aMsb ^^ bMsb
     let sum := x ^^ cMsb
-    let carry := (aMsb && bMsb) || (cMsb && x)
+    let carry := (aMsb && bMsb) || (aMsb && cMsb) || (bMsb && cMsb)
     ⟨BitVec.cons sum S, BitVec.cons carry T⟩
 
 #eval carrySave 32 5 7 3
@@ -52,7 +54,7 @@ theorem carrySave_t_eq_shift (a b c : BitVec w) :
                BitVec.truncate n b &&& BitVec.truncate n c
     have hta : trunc_and = BitVec.truncate n x := by grind
     have hcarry : (a[n] && b[n] || c[n] && (a[n] ^^ b[n])) = x[n] := by grind
-    rw [hta, hcarry]
+    rw [hta]
     ext i
     by_cases hi0 : i = 0
     · grind
