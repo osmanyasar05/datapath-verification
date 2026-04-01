@@ -81,4 +81,9 @@ def chain {w n : Nat} (v : Vector (BitVec w) n) : CSAResult w :=
 
 #eval chain (v := (⟨#[5, 2, 3, 7, 3], rfl⟩ : Vector (BitVec 32) 5))
 
+theorem chain_correct {w n : Nat} (v : Vector (BitVec w) n) :
+  let ⟨s, t⟩ := chain v
+  s + t <<< 1 = v.sum := by
+  sorry
+
 end CSA
