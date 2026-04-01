@@ -81,4 +81,60 @@ def chain {w n : Nat} (v : Vector (BitVec w) n) : CSAResult w :=
 
 #eval chain (v := (⟨#[5, 2, 3, 7, 3], rfl⟩ : Vector (BitVec 32) 5))
 
+-- v[0] + v[1] = v[0] + v[1] + 0
+theorem b1_add_b2_eq_add_zero {w : Nat} (b1 b2 : BitVec w) : b1 + b2 = b1 + b2 + 0 := by
+  simp only [BitVec.ofNat_eq_ofNat, BitVec.add_zero]
+
+def vector_sum {w n : Nat} (v : Vector (BitVec w) n) : BitVec w :=
+  match n with
+  | 0 => 0
+  | n + 1 =>
+    let sum := vector_sum (v.take n)
+    sum + v[n]
+
+#eval vector_sum (v := (⟨#[5, 2, 3, 7, 3], rfl⟩ : Vector (BitVec 32) 5))
+
+def chain_with_proof {w n : Nat} (v : Vector (BitVec w) n) : { r : CSAResult w // r.s + r.t <<< 1 = vector_sum v } :=
+  match n with
+  | 0 =>
+    let out := ⟨0, 0⟩
+    ⟨out, by
+      unfold vector_sum
+      simp [out]
+      ⟩
+  | 1 =>
+    let out := ⟨v[0], 0⟩
+    ⟨out, by
+      simp [vector_sum, out]
+      ⟩
+  | 2 =>
+    let out := carrySave w v[0] v[1] 0
+    ⟨out, by
+      simp [vector_sum, out, carrySave]
+      conv_rhs => rw [b1_add_b2_eq_add_zero] --apply the lemma to second occurence
+      rw [carrySaveAdder]
+      simp
+      ⟩
+  | 3 =>
+    let out := carrySave w v[0] v[1] v[2]
+    ⟨out, by
+      simp [vector_sum]
+      simp [out, carrySave]
+      rw [carrySaveAdder]
+      ⟩
+  | n + 1 =>
+    let result := chain_with_proof (v.take n) -- takes the first n elements of the vector.
+    let out := carrySave w result.val.s (result.val.t <<< 1) (v.back) -- the chained carry is shifted left by 1 to align with the next input.
+    ⟨out, by
+      -- v.sum = (v.take n).sum + v.back [lemma]
+      -- v.sum = (sum + carry <<< 1) + v.back [ih]
+      have hcsa := carrySaveAdder w result.val.s (result.val.t <<< 1) v.back
+      simp only [carrySave] at hcsa
+      simp only [out, carrySave]
+      rw [← hcsa]
+      rw [result.property]
+      conv_rhs => unfold vector_sum
+      simp [Vector.back]
+      ⟩
+
 end CSA
