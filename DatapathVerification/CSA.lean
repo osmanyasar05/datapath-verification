@@ -98,7 +98,9 @@ def vector_sum {w n : Nat} (v : Vector (BitVec w) n) : BitVec w :=
 theorem extract_drop {w n x : Nat} (v : Vector (BitVec w) (n)) (h : x < n) :
     (v.extract x)[0] = v[x] := by simp
 
--- Main correctness theorem for N:2 compressor chain.
+/-- Main correctness theorem for N:2 compressor chain.
+For a vector of BitVectors, the compressor chain reduces it to a pair (s,t)
+such that the sum of all elements in the vector equals s + t <<< 1. -/
 theorem chain_correct {w n : Nat} (v : Vector (BitVec w) n) :
     let ⟨s, t⟩ := chain v
     vector_sum v = s + t <<< 1 := by
@@ -117,7 +119,7 @@ theorem chain_correct {w n : Nat} (v : Vector (BitVec w) n) :
         simp
       | 2 =>
         simp [chain, vector_sum, carrySave]
-        erw [extract_drop (h := by omega), extract_drop (h := by omega)]
+        repeat erw [extract_drop (h := by omega)]
         rw [carrySaveAdder]
         grind
       | n + 3 =>
