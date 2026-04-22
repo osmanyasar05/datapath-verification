@@ -14,6 +14,7 @@ structure CSAResult (w : ℕ) where
 -- The carry-save adder splits the sum into a partial sum `s` and
 -- carry bits `t`, such that the original sum is recovered by
 -- adding `s` to the carries shifted left by 1 (i.e., t * 2).
+@[bv_normalize]
 def carrySave (w : ℕ) (a b c : BitVec w) : CSAResult w :=
   let s := a ^^^ b ^^^ c
   let t := (a &&& b ||| a &&& c ||| b &&& c)
@@ -68,63 +69,60 @@ theorem mul4_correct (a b : BitVec 4) : a * b = mul4 a b := by
 
 -- N:2 compressor implementation.
 -- Takes a vector of n bit-vectors and reduces them to 2 bit-vectors (sum and carry) using a tree of carry-save adders.
-def chain {w n : Nat} (v : Vector (BitVec w) n) : CSAResult w :=
-  match n with
-  | 0 => ⟨0, 0⟩
-  | 1 => ⟨v[0], 0⟩
-  | 2 => carrySave w v[0] v[1] 0
-  | 3 => carrySave w v[0] v[1] v[2]
-  | _ + 1 =>
+@[bv_normalize]
+def chain {w : Nat} (v : List (BitVec w)) : CSAResult w :=
+  match v with
+  | [] => ⟨0, 0⟩
+  | [a] => ⟨a, 0⟩
+  | [a,b] => carrySave w a b 0
+  | [a,b,c] => carrySave w a b c
+  | a :: rest =>
     -- drop the first element; `(n+1) - 1 = n` is definitional, so no cast is needed.
-    let ⟨sum, carry⟩ := chain (v.drop 1)
-    let ⟨s, t⟩ := carrySave w sum (carry <<< 1) v[0] -- the chained carry is shifted left by 1 to align with the next input.
+    let ⟨sum, carry⟩ := chain rest
+    let ⟨s, t⟩ := carrySave w sum (carry <<< 1) a -- the chained carry is shifted left by 1 to align with the next input.
     ⟨s, t⟩ -- return the carry without shifting, the next level handles it.
 
-#eval chain (v := (⟨#[5, 2, 3, 7, 3], rfl⟩ : Vector (BitVec 32) 5))
+#eval chain (v := [5#10, 2#10, 3#10, 7#10, 3#10])
 
 -- v[0] + v[1] = v[0] + v[1] + 0
 theorem b1_add_b2_eq_add_zero {w : Nat} (b1 b2 : BitVec w) : b1 + b2 = b1 + b2 + 0 := by
   simp only [BitVec.ofNat_eq_ofNat, BitVec.add_zero]
 
 -- Sum all elements of a vector of BitVectors.
-def vector_sum {w n : Nat} (v : Vector (BitVec w) n) : BitVec w :=
-  match n with
-  | 0 => 0
-  | _ + 1 => vector_sum (v.drop 1) + v[0]
+def list_sum {w : Nat} (v : List (BitVec w)) : BitVec w :=
+  match v with
+  | [] => 0
+  | a :: rest => list_sum rest + a
 
-#eval vector_sum (v := (⟨#[5, 2, 3, 7, 3], rfl⟩ : Vector (BitVec 32) 5))
-
--- (v.extract 1)[0] = v[1]
-theorem extract_drop {w n x : Nat} (v : Vector (BitVec w) (n)) (h : x < n) :
-    (v.extract x)[0] = v[x] := by simp
+#eval list_sum (v := [5#10, 2#10, 3#10, 7#10, 3#10])
 
 /-- Main correctness theorem for N:2 compressor chain.
 For a vector of BitVectors, the compressor chain reduces it to a pair (s,t)
 such that the sum of all elements in the vector equals s + t <<< 1. -/
-theorem chain_correct {w n : Nat} (v : Vector (BitVec w) n) :
+theorem chain_correct {w : Nat} (v : List (BitVec w)) :
     let ⟨s, t⟩ := chain v
-    vector_sum v = s + t <<< 1 := by
-  induction n with
-  | zero =>
-    simp [chain, vector_sum]
-  | succ n ih =>
-    match n with
-      | 0 =>
-        simp [chain, vector_sum]
-      | 1 =>
-        simp [vector_sum, chain]
-        erw [extract_drop (h := by omega)]
-        simp [carrySave]
-        rw [add_comm v[1] v[0], b1_add_b2_eq_add_zero, carrySaveAdder]
-        simp
-      | 2 =>
-        simp [chain, vector_sum, carrySave]
-        repeat erw [extract_drop (h := by omega)]
-        rw [carrySaveAdder]
-        grind
-      | n + 3 =>
-        have hih := ih (v.drop 1)
-        simp only [chain, carrySave, vector_sum] at hih ⊢
-        rw [← carrySaveAdder, ← hih]
+    list_sum v = s + t <<< 1 := by
+  induction v with
+  | nil =>
+    simp [chain, list_sum]
+  | cons hd rest ih =>
+    match hrest : rest with
+    | [] =>
+      simp [chain, list_sum]
+    | [a] =>
+      simp only [chain, list_sum, carrySave]
+      clear ih hrest rest
+      bv_automata_classic
+    | [a, b] =>
+      simp only [chain, list_sum, carrySave]
+      clear ih hrest rest
+      bv_automata_classic
+    | a :: b :: c :: rest' =>
+      simp only [chain, list_sum, carrySave] at ih ⊢
+      rw [show list_sum rest' + c + b + a
+            = (chain (a :: b :: c :: rest')).s
+              + (chain (a :: b :: c :: rest')).t <<< 1 from ih]
+      clear ih hrest
+      bv_automata_classic
 
 end CSA
