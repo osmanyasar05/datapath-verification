@@ -11,7 +11,7 @@ Download:
 
 ### Paper Information
 
-- Chat: 
+- Chat: https://grosser.zulipchat.com/#narrow/channel/552062-Project---Lean4---Hardware-Generation
 - Lead:
 - Senior Lead:
 
