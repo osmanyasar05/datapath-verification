@@ -314,7 +314,7 @@ Dadda's algorithm is a method for reducing the partial products of an $n$-bit mu
         sequence (Table 1) is given by $m_0 = 2$ and $m_l = \lfloor \frac{3}{2} m_{l-1} \rfloor$.
   \item Starting at level $l = L$, scan all columns from LSB to MSB.
         For each column whose height exceeds $m_{l-1}$, introduce the
-        fewest number of FAs and at most one HA necessary to bring the height down to $m_{l-1}$.
+        fewest number of FAs and at most one HA to bring the height down to $m_{l-1}$.
         Carry outputs are added to the next column, but
         should be left uncompressed until the following level.
   \item Decrement $l$ and repeat until every column has height at most~2.
